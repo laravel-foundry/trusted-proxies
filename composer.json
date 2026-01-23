@@ -1,0 +1,79 @@
+{
+  "name": "laravel-foundry/trusted-proxies",
+  "description": "Laravel trusted proxies configuration for applications behind CDNs, load balancers, or Docker networks. Supports Cloudflare, AWS CloudFront, Fastly, Docker Swarm, and custom proxies.",
+  "license": "GPL-3.0-or-later",
+  "type": "library",
+  "keywords": [
+    "laravel",
+    "trusted-proxies",
+    "cloudflare",
+    "docker",
+    "docker-swarm",
+    "proxy",
+    "aws-cloudfront",
+    "fastly"
+  ],
+  "authors": [
+    {
+      "name": "Frugan",
+      "email": "dev@frugan.it",
+      "homepage": "https://github.com/frugan-dev",
+      "role": "Developer"
+    }
+  ],
+  "homepage": "https://github.com/laravel-foundry/trusted-proxies",
+  "support": {
+    "issues": "https://github.com/laravel-foundry/trusted-proxies/issues",
+    "source": "https://github.com/laravel-foundry/trusted-proxies",
+    "docs": "https://github.com/laravel-foundry/trusted-proxies#readme"
+  },
+  "funding": [
+    {
+      "type": "custom",
+      "url": "https://buymeacoff.ee/frugan"
+    }
+  ],
+  "require": {
+    "php": ">=8.2",
+    "illuminate/http": "^10.0 || ^11.0 || ^12.0",
+    "illuminate/support": "^10.0 || ^11.0 || ^12.0"
+  },
+  "require-dev": {
+    "ergebnis/composer-normalize": "^2.48",
+    "laravel/pint": "^1.0",
+    "orchestra/testbench": "^8.0 || ^9.0 || ^10.0",
+    "phpunit/phpunit": "^10.0 || ^11.0"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "autoload": {
+    "psr-4": {
+      "LaravelFoundry\\TrustedProxies\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "LaravelFoundry\\TrustedProxies\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "ergebnis/composer-normalize": true
+    },
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "LaravelFoundry\\TrustedProxies\\Provider\\TrustedProxiesServiceProvider"
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "pint --test",
+    "lint:fix": "pint",
+    "test": "phpunit"
+  }
+}
