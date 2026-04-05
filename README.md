@@ -18,32 +18,43 @@ Qlty @see https://github.com/badges/shields/issues/11192
 
 Laravel trusted proxies configuration for applications behind CDNs, load balancers, or Docker networks.
 
-## Features
-
-- **Multiple CDN Support** - Cloudflare, AWS CloudFront, Fastly out of the box
-- **Docker Swarm Ready** - Handles Docker ingress networks and overlay networks
-- **Environment-Based Config** - Different settings for dev, staging, production
-- **Custom Proxy Support** - Add your own load balancers or reverse proxies
-- **Zero Configuration** - Works out of the box with sensible defaults
-- **Laravel Native** - Uses Laravel's built-in Request::setTrustedProxies()
-
 ## Why This Package?
 
-When running Laravel behind proxies (CDN, Docker Swarm, load balancers), Laravel sees the proxy's IP instead of the real client IP. This breaks:
+Laravel has built-in support for trusted proxies, but configuring it correctly for real-world infrastructure — especially when combining a CDN with Docker Swarm — requires non-trivial setup across multiple files.
 
-- Rate limiting
-- IP-based access control
-- Geolocation
-- Logging and analytics
-- Security features
+This package solves that with a **single `.env` variable**:
 
-This package configures Laravel to trust specific proxies and extract the real client IP from headers like `X-Forwarded-For` and `CF-Connecting-IP`.
+```bash
+TRUSTED_PROXY_PROVIDERS=cloudflare,docker
+```
+
+That's it. No middleware changes, no PHP configuration files, no hardcoded IP lists to maintain.
+
+### What it does that Laravel doesn't out of the box
+
+- **Multi-provider orchestration** — declare multiple providers (`cloudflare`, `aws_cloudfront`, `fastly`, `docker`) and the package merges their IP ranges automatically
+- **Dynamic Cloudflare IPs** — Cloudflare IP ranges are fetched from the official API and cached via [`monicahq/laravel-cloudflare`](https://github.com/monicahq/laravel-cloudflare), so they never go stale
+- **Docker Swarm aware** — includes the Docker internal network ranges (`10.0.0.0/8`, `172.16.0.0/12`) needed when the Swarm ingress acts as an internal proxy
+- **Environment-based** — different providers per environment (local, staging, production) without touching PHP code
+
+### What it does not do
+
+It does not replace or wrap Laravel's `TrustProxies` middleware. It configures `Request::setTrustedProxies()` directly, letting Symfony's battle-tested header resolution handle everything.
+
+## Features
+
+- **Multiple CDN Support** — Cloudflare (dynamic), AWS CloudFront, Fastly
+- **Docker Swarm Ready** — handles Docker ingress networks and overlay networks
+- **Environment-Based Config** — different settings for dev, staging, production
+- **Custom Proxy Support** — add your own load balancers or reverse proxies
+- **Zero Configuration** — works out of the box with sensible defaults
+- **Laravel Native** — uses Laravel's built-in `Request::setTrustedProxies()`
 
 ## Requirements
 
 - PHP >= 8.2
-- Laravel Illuminate/Support ^10.0|^11.0|^12.0
-- Laravel Illuminate/HTTP ^10.0|^11.0|^12.0
+- Laravel Illuminate/Support `^10.0 | ^11.0 | ^12.0 | ^13.0`
+- Laravel Illuminate/HTTP `^10.0 | ^11.0 | ^12.0 | ^13.0`
 
 ## Installation
 
@@ -70,13 +81,11 @@ TRUSTED_PROXY_PROVIDERS=cloudflare,docker
 TRUSTED_PROXY_PROVIDERS=cloudflare,docker
 ```
 
-That's it! The package will automatically configure trusted proxies on every request.
+That's it. The package will automatically configure trusted proxies on every request.
 
 ## Configuration
 
 ### Environment Variables
-
-The package uses environment variables for configuration:
 
 ```bash
 # Comma-separated list of providers
@@ -88,10 +97,12 @@ TRUSTED_PROXY_CUSTOM_RANGES=10.20.0.0/16,192.168.100.5
 
 ### Available Providers
 
-- `cloudflare` - Cloudflare CDN (includes CF-Connecting-IP header)
-- `aws_cloudfront` - AWS CloudFront CDN
-- `fastly` - Fastly CDN (includes Fastly-Client-IP header)
-- `docker` - Docker networks (bridge, custom, Swarm ingress)
+| Provider | Description | IP Source |
+|---|---|---|
+| `cloudflare` | Cloudflare CDN | Dynamic via API (cached) |
+| `aws_cloudfront` | AWS CloudFront CDN | Static ranges |
+| `fastly` | Fastly CDN | Static ranges |
+| `docker` | Docker networks (bridge, custom, Swarm ingress) | Static ranges |
 
 ### Publish Configuration (Optional)
 
@@ -112,39 +123,31 @@ After installation, Laravel automatically gets the real client IP:
 ```php
 // Get real client IP (not proxy IP)
 $clientIp = request()->ip();
-
-// Use in your application
-Log::info('Request from IP', ['ip' => $clientIp]);
 ```
 
 ### Environment-Specific Configurations
 
-#### Local Development (.env.development)
+#### Local Development
 
 ```bash
-# Only trust Docker internal networks
 TRUSTED_PROXY_PROVIDERS=docker
 ```
 
-#### Staging (.env.staging)
+#### Staging
 
 ```bash
-# Trust Docker + Cloudflare
 TRUSTED_PROXY_PROVIDERS=cloudflare,docker
 ```
 
-#### Production with Docker Swarm (.env.production)
+#### Production with Docker Swarm
 
 ```bash
-# Trust Docker (for Swarm ingress) + Cloudflare
 TRUSTED_PROXY_PROVIDERS=cloudflare,docker
 ```
 
-**Important:** Always keep `docker` enabled in production when using Docker Swarm, because the Swarm ingress network acts as an internal proxy.
+**Important:** Always keep `docker` enabled in production when using Docker Swarm. The Swarm ingress network acts as an internal proxy, so without trusting Docker IP ranges the real client IP cannot be resolved correctly even when Cloudflare provides it in `CF-Connecting-IP`.
 
 ### Custom Load Balancer
-
-If you have an additional load balancer:
 
 ```bash
 TRUSTED_PROXY_PROVIDERS=cloudflare,docker
@@ -154,7 +157,6 @@ TRUSTED_PROXY_CUSTOM_RANGES=10.20.0.0/16
 ### Multiple CDN Providers
 
 ```bash
-# Using both Cloudflare and Fastly
 TRUSTED_PROXY_PROVIDERS=cloudflare,fastly,docker
 ```
 
@@ -180,11 +182,11 @@ class IpWhitelist
     public function handle($request, $next)
     {
         $allowedIps = ['1.2.3.4', '5.6.7.8'];
-        
+
         if (!in_array(request()->ip(), $allowedIps)) {
             abort(403, 'Access denied');
         }
-        
+
         return $next($request);
     }
 }
@@ -202,17 +204,6 @@ Log::channel('daily')->info('User action', [
 ]);
 ```
 
-### Geolocation
-
-```php
-use Illuminate\Support\Facades\Http;
-
-$ip = request()->ip();
-$location = Http::get("http://ip-api.com/json/{$ip}")->json();
-
-// Use real IP for accurate geolocation
-```
-
 ## How It Works
 
 ### Architecture
@@ -220,31 +211,12 @@ $location = Http::get("http://ip-api.com/json/{$ip}")->json();
 ```
 Internet → CDN (Cloudflare) → Your Server → Docker Swarm Ingress → Container
          ↓ adds CF-Connecting-IP              ↓ adds X-Forwarded-*
-         
+
 Package configures Laravel to:
-1. Trust IPs from Cloudflare and Docker networks
-2. Read real client IP from CF-Connecting-IP header
-3. Fall back to X-Forwarded-For if needed
+1. Trust IPs from Cloudflare (dynamic) and Docker networks
+2. Let Symfony resolve the real client IP from X-Forwarded-For
+3. request()->ip() returns the real client IP
 ```
-
-### Technical Details
-
-**Request Flow:**
-1. Request arrives at CDN (e.g., Cloudflare)
-2. CDN adds headers: `CF-Connecting-IP`, `X-Forwarded-For`
-3. Request reaches your server
-4. If using Docker Swarm, goes through ingress network
-5. Package configures `Request::setTrustedProxies()` with:
-   - CDN IP ranges (Cloudflare, AWS, Fastly)
-   - Docker network ranges (10.0.0.0/8, 172.16.0.0/12)
-   - Custom ranges (if configured)
-6. Laravel extracts real IP from trusted headers
-7. `request()->ip()` returns real client IP
-
-**Provider-Specific Headers:**
-- Cloudflare: Uses `CF-Connecting-IP` (most reliable)
-- Fastly: Uses `Fastly-Client-IP`
-- Others: Use `X-Forwarded-For` (first non-private IP)
 
 ### Why Trust Docker in Production?
 
@@ -254,66 +226,43 @@ With Docker Swarm, requests flow through the **ingress network** before reaching
 Client → Cloudflare → Your VPS → Swarm Ingress (10.0.x.x) → Container
 ```
 
-Without trusting Docker IPs, you'd see the ingress IP (10.0.x.x) instead of the real client IP. Cloudflare sends the real IP in `CF-Connecting-IP`, but you still need to trust the ingress network to process it correctly.
+Without trusting Docker IPs, you'd see the ingress IP (`10.0.x.x`) instead of the real client IP. Cloudflare sends the real IP in `CF-Connecting-IP`, but you still need to trust the ingress network for Symfony to process the forwarded headers correctly.
+
+### Cloudflare IP Ranges
+
+Cloudflare IP ranges are resolved dynamically at runtime via [`monicahq/laravel-cloudflare`](https://github.com/monicahq/laravel-cloudflare), which fetches them from `https://www.cloudflare.com/ips-v4` and `ips-v6` and stores them in Laravel's cache. You should schedule a periodic cache refresh to keep them up to date:
+
+```bash
+php artisan cloudflare:reload
+```
+
+Or via Laravel scheduler in `routes/console.php`:
+
+```php
+Schedule::command('cloudflare:reload')->daily();
+```
 
 ## Troubleshooting
 
 ### Still seeing proxy IPs?
 
-Check your configuration:
-
 ```php
 // In tinker or any PHP file
 $service = app(\LaravelFoundry\TrustedProxies\Service\TrustedProxyService::class);
 
-// Check enabled providers
-$providers = config('trustedproxies.providers');
-var_dump($providers);
-
-// Check all trusted IPs
-$trustedIps = $service->getTrustedProxies();
-var_dump($trustedIps);
-
-// Check current IP
+var_dump(config('trustedproxies.providers'));
+var_dump($service->getTrustedProxies());
 var_dump(request()->ip());
 ```
 
-### Cloudflare not working?
-
-Verify Cloudflare is passing the header:
-
-```php
-// Check if header is present
-var_dump($_SERVER['HTTP_CF_CONNECTING_IP'] ?? 'not set');
-```
-
-Make sure Cloudflare's orange cloud is enabled (proxying traffic).
-
 ### Docker Swarm issues?
 
-Verify the ingress network:
-
 ```bash
-# Check Docker network
+# Check the ingress network
 docker network inspect ingress
 
 # Check your container's networks
 docker inspect <container-id> | grep -A 20 Networks
-```
-
-### Wrong IP being returned?
-
-Enable debug logging:
-
-```php
-// In tinker or temporarily in code
-Log::debug('IP Detection', [
-    'request_ip' => request()->ip(),
-    'remote_addr' => $_SERVER['REMOTE_ADDR'] ?? null,
-    'cf_connecting_ip' => $_SERVER['HTTP_CF_CONNECTING_IP'] ?? null,
-    'x_forwarded_for' => $_SERVER['HTTP_X_FORWARDED_FOR'] ?? null,
-    'trusted_proxies' => $service->getTrustedProxies(),
-]);
 ```
 
 ## Testing
