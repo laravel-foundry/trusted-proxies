@@ -35,14 +35,15 @@
   ],
   "require": {
     "php": ">=8.2",
-    "illuminate/http": "^10.0 || ^11.0 || ^12.0",
-    "illuminate/support": "^10.0 || ^11.0 || ^12.0"
+    "illuminate/http": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+    "illuminate/support": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+    "monicahq/laravel-cloudflare": "^4.0"
   },
   "require-dev": {
     "ergebnis/composer-normalize": "^2.48",
     "laravel/pint": "^1.0",
-    "orchestra/testbench": "^8.0 || ^9.0 || ^10.0",
-    "phpunit/phpunit": "^10.0 || ^11.0"
+    "orchestra/testbench": "^8.0 || ^9.0 || ^10.0 || ^11.0",
+    "phpunit/phpunit": "^10.0 || ^11.0 || ^12.0"
   },
   "minimum-stability": "dev",
   "prefer-stable": true,

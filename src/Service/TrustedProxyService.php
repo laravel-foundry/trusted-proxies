@@ -15,48 +15,17 @@ namespace LaravelFoundry\TrustedProxies\Service;
 
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Http\Request;
+use Monicahq\Cloudflare\Facades\CloudflareProxies;
 
 /**
- * Service for configuring trusted proxies
- * Supports multiple providers: Cloudflare, AWS CloudFront, Fastly, Docker, custom ranges
+ * Service for configuring trusted proxies.
+ * Supports multiple providers: Cloudflare, AWS CloudFront, Fastly, Docker, custom ranges.
  */
 class TrustedProxyService
 {
     /**
-     * Cloudflare IP ranges
-     * Updated: 2025-01
-     * Source: https://www.cloudflare.com/ips/
-     */
-    protected const CLOUDFLARE_IPS = [
-        // IPv4
-        '173.245.48.0/20',
-        '103.21.244.0/22',
-        '103.22.200.0/22',
-        '103.31.4.0/22',
-        '141.101.64.0/18',
-        '108.162.192.0/18',
-        '190.93.240.0/20',
-        '188.114.96.0/20',
-        '197.234.240.0/22',
-        '198.41.128.0/17',
-        '162.158.0.0/15',
-        '104.16.0.0/13',
-        '104.24.0.0/14',
-        '172.64.0.0/13',
-        '131.0.72.0/22',
-        // IPv6
-        '2400:cb00::/32',
-        '2606:4700::/32',
-        '2803:f800::/32',
-        '2405:b500::/32',
-        '2405:8100::/32',
-        '2a06:98c0::/29',
-        '2c0f:f248::/32',
-    ];
-
-    /**
      * AWS CloudFront IP ranges (common ranges)
-     * For complete list, fetch from: https://ip-ranges.amazonaws.com/ip-ranges.json
+     * For the complete list, fetch from: https://ip-ranges.amazonaws.com/ip-ranges.json
      */
     protected const AWS_CLOUDFRONT_IPS = [
         '13.32.0.0/15',
@@ -99,7 +68,7 @@ class TrustedProxyService
      */
     protected const DOCKER_IPS = [
         '172.16.0.0/12',  // Default bridge network
-        '10.0.0.0/8',     // Custom networks
+        '10.0.0.0/8',     // Custom networks and Swarm ingress
         '192.168.0.0/16', // Host network
     ];
 
@@ -114,12 +83,10 @@ class TrustedProxyService
     }
 
     /**
-     * Configure trusted proxies on the request instance
+     * Configure trusted proxies on the request instance.
      */
     public function configure(): void
     {
-        $request = \request();
-
         $providers = $this->config->get('trustedproxies.providers', []);
         $customRanges = $this->config->get('trustedproxies.custom_ranges', []);
         $headers = $this->getTrustedHeaders();
@@ -130,15 +97,11 @@ class TrustedProxyService
             return;
         }
 
-        // Set trusted proxies and headers
-        $request->setTrustedProxies($trustedProxies, $headers);
-
-        // Handle provider-specific headers
-        $this->handleProviderSpecificHeaders($providers);
+        \request()->setTrustedProxies($trustedProxies, $headers);
     }
 
     /**
-     * Build the array of trusted proxy IPs based on enabled providers
+     * Build the array of trusted proxy IPs based on enabled providers.
      */
     protected function buildTrustedProxies(array $providers, array $customRanges): array
     {
@@ -155,12 +118,13 @@ class TrustedProxyService
     }
 
     /**
-     * Get IP ranges for a specific provider
+     * Get IP ranges for a specific provider.
+     * Cloudflare IPs are fetched dynamically (with cache) via monicahq/laravel-cloudflare.
      */
     protected function getProviderIps(string $provider): array
     {
         return match (\strtolower($provider)) {
-            'cloudflare' => self::CLOUDFLARE_IPS,
+            'cloudflare' => CloudflareProxies::load(),
             'aws_cloudfront', 'cloudfront' => self::AWS_CLOUDFRONT_IPS,
             'fastly' => self::FASTLY_IPS,
             'docker' => self::DOCKER_IPS,
@@ -169,7 +133,7 @@ class TrustedProxyService
     }
 
     /**
-     * Get trusted headers configuration
+     * Get trusted headers configuration.
      */
     protected function getTrustedHeaders(): int
     {
@@ -193,23 +157,7 @@ class TrustedProxyService
     }
 
     /**
-     * Handle provider-specific headers (e.g., Cloudflare's CF-Connecting-IP)
-     */
-    protected function handleProviderSpecificHeaders(array $providers): void
-    {
-        if (\in_array('cloudflare', $providers) && isset($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-            // Cloudflare provides the real client IP in CF-Connecting-IP header
-            // We set it as REMOTE_ADDR so Laravel's Request::ip() picks it up
-            $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
-        }
-
-        if (\in_array('fastly', $providers) && isset($_SERVER['HTTP_FASTLY_CLIENT_IP'])) {
-            $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_FASTLY_CLIENT_IP'];
-        }
-    }
-
-    /**
-     * Check if a specific provider is enabled
+     * Check if a specific provider is enabled.
      */
     public function isProviderEnabled(string $provider): bool
     {
@@ -217,7 +165,7 @@ class TrustedProxyService
     }
 
     /**
-     * Get all trusted proxy IPs currently configured
+     * Get all trusted proxy IPs currently configured.
      */
     public function getTrustedProxies(): array
     {
