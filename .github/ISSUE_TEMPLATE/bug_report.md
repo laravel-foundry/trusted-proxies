@@ -23,14 +23,17 @@ A clear and concise description of what you expected to happen.
 A clear and concise description of what actually happened.
 
 ## Environment
-- PHP Version: [e.g. 8.1]
-- WordPress Version: [e.g. 6.4]
-- WP Env Version: [e.g. 1.0.0]
-- Environment Type: [e.g. Docker, local, production]
+- PHP Version: [e.g. 8.2]
+- Laravel Version: [e.g. 12.0]
+- Package Version: [e.g. 1.0.0]
+- Deployment: [e.g. Docker Swarm, local, VPS]
+- Proxy/CDN: [e.g. Cloudflare, AWS CloudFront, Fastly]
 
 ## Configuration
-```php
-// Any relevant configuration or code snippets
+```bash
+# Relevant .env values (no secrets)
+TRUSTED_PROXY_PROVIDERS=
+TRUSTED_PROXY_CUSTOM_RANGES=
 ```
 
 ## Error Messages

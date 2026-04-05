@@ -40,29 +40,28 @@ We believe in responsible disclosure. We ask that you:
 
 ### Security Best Practices
 
-When using WP Env:
+When using this package:
 
 1. **Environment Variables**: Never commit sensitive values to version control
 2. **Production Settings**: Use appropriate environment detection in production
 3. **Access Control**: Restrict access to configuration files
-4. **Regular Updates**: Keep WP Env and dependencies updated
-5. **Audit Logs**: Monitor environment variable access in production
+4. **Regular Updates**: Keep the package and its dependencies updated
+5. **Audit Logs**: Monitor proxy header values in production
 
 ### Security Features
 
-WP Env includes several security features:
+This package includes several security features:
 
-- **Sensitive Key Protection**: Automatic detection and protection of sensitive keys
-- **No Cache for Secrets**: Sensitive values are never cached
-- **WordPress Integration**: Follows WordPress security best practices
-- **Type Safety**: Strict typing reduces injection risks
+- **Explicit Trust**: Only IPs from declared providers are trusted
+- **Cloudflare Dynamic Fetch**: Cloudflare IP ranges are fetched from the official API and cached, so they stay up to date
+- **Symfony Integration**: Relies on Symfony's battle-tested `setTrustedProxies()` mechanism
+- **No Header Manipulation**: Does not manipulate `$_SERVER` directly; lets the framework handle header resolution
 
 ### Known Security Considerations
 
-- This library reads environment variables and WordPress constants
-- Sensitive data should be properly protected at the system level
-- Use appropriate file permissions for .env files
-- Consider using WordPress's built-in secret management where applicable
+- Only enable providers that are actually in use in your infrastructure
+- Custom ranges (`TRUSTED_PROXY_CUSTOM_RANGES`) should be as specific as possible
+- Use appropriate file permissions for `.env` files
 
 ## Security Contact
 
@@ -72,4 +71,4 @@ For security-related questions or concerns:
 
 ## Acknowledgments
 
-We appreciate the security research community's efforts in responsibly disclosing vulnerabilities. Security researchers who help us improve WP Env will be acknowledged in our security advisories (with their permission).
+We appreciate the security research community's efforts in responsibly disclosing vulnerabilities. Security researchers who help us improve this package will be acknowledged in our security advisories (with their permission).
