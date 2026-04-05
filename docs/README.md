@@ -8,4 +8,8 @@
 - https://stackoverflow.com/a/2031935/3929620
 - https://stackoverflow.com/a/58239702/3929620
 - https://laravel-news.com/managing-proxy-trust-in-laravel-applications
+- https://github.com/symfony/http-foundation
+- https://github.com/Torann/laravel-geoip
 - https://github.com/Vectorface/whip
+- https://github.com/monicahq/laravel-cloudflare
+- https://github.com/fideloper/trustedproxy
